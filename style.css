@@ -1,0 +1,147 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #04060c;
+  color: #e9e9e4;
+  font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#stage {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.hidden { display: none !important; }
+
+#hud {
+  position: fixed;
+  top: 14px;
+  left: 16px;
+  font-size: 11px;
+  line-height: 1.6;
+  letter-spacing: 0.04em;
+  color: rgba(233, 233, 228, 0.45);
+  pointer-events: none;
+  z-index: 3;
+}
+#hud div:first-child { color: rgba(233, 233, 228, 0.75); }
+
+/* 실제 입력은 투명하게 — 글자는 캔버스에서 P·R·O·T·O로 그림 */
+#name {
+  position: fixed;
+  left: 0;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  font-size: 16px; /* iOS 확대 방지 */
+  opacity: 0.01;
+  z-index: 2;
+  cursor: text;
+}
+
+#send, #restart {
+  position: fixed;
+  z-index: 4;
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: #e9e9e4;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  padding: 9px 16px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+#send { right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); }
+#send:hover, #restart:hover { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.6); }
+
+#restart {
+  left: 50%;
+  bottom: max(22px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  animation: fadein 1.2s ease both;
+}
+
+#hint {
+  position: fixed;
+  left: 16px;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  font-size: 11px;
+  color: rgba(233, 233, 228, 0.38);
+  pointer-events: none;
+  z-index: 3;
+}
+
+#setup {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  padding: 16px;
+}
+#setup .panel {
+  width: min(360px, 100%);
+  padding: 28px 24px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  background: rgba(4, 6, 12, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  text-align: center;
+}
+#setup .logo {
+  font-weight: 800;
+  font-size: 26px;
+  letter-spacing: 0.3em;
+  margin-bottom: 20px;
+  padding-left: 0.3em;
+}
+#setup label {
+  display: block;
+  font-family: "Noto Sans KR", system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  color: rgba(233, 233, 228, 0.75);
+  margin-bottom: 14px;
+}
+#setup .row { display: flex; gap: 8px; }
+#count {
+  flex: 1;
+  min-width: 0;
+  font-family: inherit;
+  font-size: 18px;
+  text-align: center;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+  padding: 10px;
+  outline: none;
+}
+#count:focus { border-color: rgba(255, 255, 255, 0.7); }
+#start {
+  font-family: "Noto Sans KR", system-ui, sans-serif;
+  font-size: 15px;
+  color: #04060c;
+  background: #f2f2ec;
+  border: 0;
+  border-radius: 10px;
+  padding: 0 20px;
+  cursor: pointer;
+}
+#start:hover { background: #fff; }
+
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }

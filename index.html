@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>PROTO Tree</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Noto+Sans+KR:wght@900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="stage"></canvas>
+
+  <!-- 상단 정보 -->
+  <div id="hud" class="hidden">
+    <div>PROTO TREE</div>
+    <div id="hud-members">members 00 / 00</div>
+    <div id="hud-letters">letters 0</div>
+    <div id="hud-rot">rotation 0.00°</div>
+    <div id="hud-lights">lights 0</div>
+  </div>
+
+  <!-- 이름 입력 (보이지 않는 실제 input — 캔버스 위 입력 영역을 덮음) -->
+  <input id="name" type="text" maxlength="12" autocomplete="off" autocorrect="off"
+         autocapitalize="off" spellcheck="false" aria-label="이름 입력">
+  <button id="send" class="hidden" type="button">전송 ↵</button>
+  <div id="hint" class="hidden">이름을 쓰고 Enter 또는 전송</div>
+
+  <!-- 시작: 구성원 수 입력 -->
+  <div id="setup">
+    <div class="panel">
+      <div class="logo">P R O T O</div>
+      <label for="count">구성원은 모두 몇 명인가요?</label>
+      <div class="row">
+        <input id="count" type="number" min="1" max="999" inputmode="numeric" placeholder="12">
+        <button id="start" type="button">시작</button>
+      </div>
+    </div>
+  </div>
+
+  <button id="restart" class="hidden" type="button">처음부터</button>
+
+  <script src="sketch.js"></script>
+</body>
+</html>
