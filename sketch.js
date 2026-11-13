@@ -110,7 +110,7 @@
    * ============================================================ */
   let K = 1, COLS = 0, ROWS = 0, CX = 0;
   let TREE_TOP = 0, TREE_BOT = 0, TREE_SPAN = 1, BASE_R = 1, MID_ROW = 0;
-  let STAR_RO = 5.4, STAR_RI = 2.3, STAR_T = 1.8, STAR_CY = 0, FLOOR = 0;
+  let STAR_RO = 5.4, STAR_RI = 2.3, STAR_T = 1.8, STAR_CY = 0, FLOOR = 0, TREE_SHIFT = 0;
   let U_Q = 180;
   let NCELL = 0;
   let ZB, ZS, ZK, OD, OCOL, OB, OA, GD, GCOL, GB, GAP;
@@ -135,9 +135,10 @@
   const bottomUp = r => clamp01((TREE_BOT - r) / (TREE_BOT - TREE_TOP)); // 0 = 맨 아래, 1 = 꼭대기
 
   // 월드 좌표 → [화면 행, 화면 열, 깊이(클수록 앞)]  (x,z: 칸 폭 단위, y: 행)
+  let projShift = 0;                       // 트리·별·볼만 아래로 내리는 양 (선물은 0)
   function project(x, y, z) {
     return [
-      TREE_TOP + ((y - TREE_TOP) * RATIO * COS_T + z * SIN_T) / RATIO,
+      TREE_TOP + projShift + ((y - TREE_TOP) * RATIO * COS_T + z * SIN_T) / RATIO,
       CX + x,
       z * COS_T - y * RATIO * SIN_T,
     ];
@@ -153,6 +154,8 @@
     STAR_RO = 5.4 * K; STAR_RI = 2.3 * K; STAR_T = 1.8 * K;
     STAR_CY = TREE_TOP - 2.9 * K;
     FLOOR = TREE_BOT + 7 * K;
+    TREE_SHIFT = Math.round(6 * K);          // 트리를 지금 모양 그대로 아래로 (3K씩 두 번)
+    projShift = TREE_SHIFT;
     U_Q = Math.round(180 * K);
     NCELL = COLS * ROWS;
 
@@ -258,6 +261,7 @@
   const LIT_T = T_DONE + 0.6;
   const WARM = [255, 228, 160], WARM_WHITE = [255, 242, 205];
   const LIT_BALLS = [[236, 178, 48], [250, 205, 95], [214, 214, 220], [196, 158, 70], [240, 225, 190]];
+  const TITLE_LIT_T = LIT_T + 1.5;      // 나무 점등(약 3초)의 중간쯤부터 글자도 점등
   let curFt = -1;
   const smooth = x => { x = clamp01(x); return x * x * (3 - 2 * x); };
   const litAll = () => (curFt < 0 ? 0 : smooth((curFt - LIT_T) / 3));                       // 전체 점등 정도
@@ -477,7 +481,7 @@
     const lk = litAll();
     if (lk <= 0) return;
     const n = Math.round(GC * GRW * 0.025);
-    const tcx = treeC0 + CX, tcy = treeR0 + TREE_TOP + TREE_SPAN * 0.5;
+    const tcx = treeC0 + CX, tcy = treeR0 + TREE_SHIFT + TREE_TOP + TREE_SPAN * 0.5;
     for (let i = 0; i < n; i++) {
       const a = h2(i, 77) * TAU, rr = Math.sqrt(h2(i, 78));
       const drift = (t * (0.4 + h2(i, 81) * 0.8) + h2(i, 82) * 50) % 1;       // 천천히 아래로 흐름
@@ -500,7 +504,7 @@
       let fill = '#fff';
       const lk = litAll();
       if (lk > 0) {                                                  // 트리 가까운 눈은 금빛으로
-        const dx = (f.col - (treeC0 + CX)) / (BASE_R * 1.3), dy = (r - (treeR0 + TREE_TOP + TREE_SPAN * 0.5)) / (TREE_SPAN * 0.8);
+        const dx = (f.col - (treeC0 + CX)) / (BASE_R * 1.3), dy = (r - (treeR0 + TREE_SHIFT + TREE_TOP + TREE_SPAN * 0.5)) / (TREE_SPAN * 0.8);
         const near = clamp01(1 - Math.hypot(dx, dy)) * lk;
         if (near > 0) fill = rgb(mix(C.white, WARM, near));
       }
@@ -512,9 +516,41 @@
   // 지평선 한 점으로 모이는 세로 줄 + 아래로 갈수록 넓어지는 가로 줄 → 바닥 타일 원근.
   // 눈이 쌓이면 줄이 묻히고 하얀 설원이 됨.
   const GROUND = [34, 42, 60], SNOW_NEAR = [255, 255, 255], SNOW_FAR = [150, 165, 195];
+  // 바닥 그림자: 트리·선물 밑동에서 오른쪽 뒤(빛 반대쪽)로 깔리는 부드러운 타원
+  function buildShadows() {
+    const list = [];
+    // 트리: 쌓이는 만큼 진해짐
+    const treeK = smooth(P / S.BUILD[1]);
+    if (treeK > 0) {
+      const [r, c] = project(BASE_R * 0.35, TREE_BOT, -BASE_R * 0.25);
+      list.push({ c: treeC0 + c, r: treeR0 + r, rx: BASE_R * 1.45, ry: BASE_R * 0.42 / RATIO, k: 0.7 * treeK });
+    }
+    // 선물 상자: 생길 때 같이
+    const keep = projShift;
+    projShift = 0;
+    GIFTS.forEach((g, gi) => {
+      const k = clamp01((P - lerpIn(S.GIFT, gi * 0.1)) / 0.02);
+      if (k <= 0) return;
+      const w = g.w * K, d = g.d * K;
+      const [r, c] = project(g.x * K + w * 0.45, FLOOR, g.z * K - d * 0.35);
+      list.push({ c: treeC0 + c, r: treeR0 + r, rx: w * 0.95, ry: Math.max(1.2, d * 0.55 / RATIO), k: 0.75 * k });
+    });
+    projShift = keep;
+    return list;
+  }
+  function shadowAt(list, c, r) {
+    let sh = 0;
+    for (const s of list) {
+      const d = Math.hypot((c - s.c) / s.rx, (r - s.r) / s.ry);
+      if (d < 1) sh = Math.max(sh, s.k * (1 - smooth((d - 0.45) / 0.55)));
+    }
+    return sh;
+  }
+
   function drawFloor(t) {
     const floorRows = GRW - horizon;
     const vpx = GC / 2;
+    const shadows = buildShadows();
     for (let fr = 0; fr < floorRows; fr++) {
       const row = horizon + fr;
       const dT = (fr + 1) / floorRows;                  // 0 지평선 → 1 화면 아래
@@ -544,6 +580,12 @@
             const glint = 0.5 + 0.5 * Math.sin(t * (2 + h * 60) + c);
             col = mix(col, C.white, glint * 0.8);
           }
+        }
+        // 그림자: 바닥은 어둡게, 눈 위에서는 푸르스름한 그늘
+        const sh = shadows.length ? shadowAt(shadows, c, row) : 0;
+        if (sh > 0) {
+          col = mix(col, scale(mix([20, 26, 42], [70, 88, 130], Math.min(1, a)), 0.6 + 0.4 * dT), sh);
+          b *= 1 - sh * 0.7;
         }
         const bk = bucketOf(clamp01(b + dT * 0.25));
         batches[bk].push(cx(c), cy(row), RAMP[bk][(h2(c, row * 3) * 4) | 0], rgb(col), 0.5 + 0.5 * Math.max(dT, a));
@@ -715,6 +757,8 @@
 
   // 선물 상자: 면마다 다른 조명(윗면 밝고 옆면 어두움) + 모서리 선 + 리본 + 매듭
   function rasterGifts() {
+    const keep = projShift;
+    projShift = 0;                           // 선물은 제자리
     let curAppear = 0;
     const gwrite = (c, r, d, rgbv, b) => {
       if (c < 0 || r < 0 || c >= COLS || r >= ROWS) return;
@@ -761,6 +805,7 @@
         splatSphere(X, Y, Z, rad, g.rib, 0.8, gwrite);
       }
     });
+    projShift = keep;
   }
 
   function starZ(lx, ly) {
@@ -1040,7 +1085,7 @@
       block(c - padC, r - padR, c + padC, r + padR);
     }
     // 별 자리
-    block(Math.floor(treeC0 + CX - STAR_RO - padC), 0, Math.ceil(treeC0 + CX + STAR_RO + padC), Math.ceil(treeR0 + TREE_TOP + padR));
+    block(Math.floor(treeC0 + CX - STAR_RO - padC), 0, Math.ceil(treeC0 + CX + STAR_RO + padC), Math.ceil(treeR0 + TREE_SHIFT + TREE_TOP + padR));
     // 왼쪽 위 정보 표시(HUD), 지면
     block(0, 0, Math.ceil(170 / cw), Math.ceil(100 / ch));
     block(0, sky - 1, GC - 1, GRW - 1);
@@ -1136,11 +1181,34 @@
     if (ft < T0) return;
     if (titleDirty) buildTitle();
     const shown = [];
+    // 별 위치 (화면 칸) — 글자 점등이 여기서부터 퍼짐
+    const starC = treeC0 + CX, starR = treeR0 + TREE_SHIFT + STAR_CY;
+    let starMaxD = 1;
+    for (const tc of titleCells) starMaxD = Math.max(starMaxD, Math.hypot(tc.col - starC, (tc.row - starR) * RATIO));
     for (const tc of titleCells) {
       if (ft < tc.delay) continue;
       const k = clamp01((ft - tc.delay) / 0.3);
       const shimmer = 0.82 + 0.18 * Math.sin(t * 3 - tc.col * 0.12 + tc.row * 0.2);
-      const col = mix(C.white, scale(tc.color, shimmer), k);
+      let col = mix(C.white, scale(tc.color, shimmer), k);
+
+      // 나무 점등 중간쯤부터 글자도 금빛 조명으로 — 별을 중심으로 가까운 칸부터 퍼져 나감
+      const sd = Math.hypot(tc.col - starC, (tc.row - starR) * RATIO) / starMaxD;
+      const tk = smooth((ft - TITLE_LIT_T - sd * 1.6) / 0.8);
+      if (tk > 0) {
+        const h = h2(tc.col * 5 + 1, tc.row * 3 + 2);
+        const gold = mix([236, 170, 50], WARM_WHITE, 0.35 + 0.65 * h2(tc.col, tc.row + 9));   // 금 ~ 따뜻한 흰빛
+        col = mix(col, scale(gold, 0.8 + 0.2 * shimmer), tk);
+        if (h < 0.38) {                                                         // 꼬마전구
+          const tw = 0.6 + 0.4 * Math.sin(t * (3 + h * 25) + h * 90);
+          const on = clamp01((tk - h * 1.5) * 3);
+          col = mix(col, scale(WARM_WHITE, 0.8 + 0.4 * tw), on);
+        }
+        const hg = h2(tc.col + 911, tc.row);
+        if (hg < 0.45) {                                                        // 글리터 번쩍임
+          const flash = Math.pow(Math.max(0, Math.sin(t * (1.5 + hg * 6) + hg * 200)), 40) * tk;
+          if (flash > 0.05) col = mix(col, C.white, Math.min(1, flash * 1.4));
+        }
+      }
       if (emit(tc.col, tc.row, tc.ch, col, clamp01((ft - tc.delay) / 0.06), 2)) shown.push(tc);
     }
     // 획 둘레 한 칸 비우기 (눈·별과 섞이지 않게)
@@ -1218,7 +1286,7 @@
   function drawTreeHalo() {
     const k = litAll();
     if (k <= 0) return;
-    const x = cx(treeC0 + CX), y = cy(treeR0 + TREE_TOP + TREE_SPAN * 0.55);
+    const x = cx(treeC0 + CX), y = cy(treeR0 + TREE_SHIFT + TREE_TOP + TREE_SPAN * 0.55);
     const rad = ch * TREE_SPAN * 0.85;
     const g = ctx.createRadialGradient(x, y, 0, x, y, rad);
     g.addColorStop(0, `rgba(255,200,110,${0.22 * k})`);
@@ -1231,7 +1299,7 @@
   function drawStarGlow(ft, yellow, t) {
     if (ft < F.STAR) return;
     const x = cx(treeC0 + CX);
-    const y = cy(treeR0 + STAR_CY);
+    const y = cy(treeR0 + TREE_SHIFT + STAR_CY);
     const pulse = ft > F.END ? 0.8 + 0.2 * Math.sin(t * 2.4) : 1;
     const rad = cw * 9 * K * (1 + 0.8 * litAll());
     const g = ctx.createRadialGradient(x, y, 0, x, y, rad);
@@ -1265,7 +1333,7 @@
       finaleStart = t;
       nameInput.blur();
     }
-    if (finaleStart != null && !doneShown && t - finaleStart > LIT_T + 3.5) {
+    if (finaleStart != null && !doneShown && t - finaleStart > TITLE_LIT_T + 2.8) {
       doneShown = true;
       restartBtn.classList.remove('hidden');
     }
